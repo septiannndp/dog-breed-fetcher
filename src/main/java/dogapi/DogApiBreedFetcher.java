@@ -26,57 +26,48 @@ public class DogApiBreedFetcher implements BreedFetcher {
     @Override
     public List<String> getSubBreeds(String breed) throws BreedNotFoundException {
         if (breed == null) {
-            throw new BreedNotFoundException("Breed not found");
+            throw new BreedFetcher.BreedNotFoundException("Breed not found");
         }
 
-        String url = "https://dog.ceo/api/breed/" + breed + "/list";
+        String normalized = breed.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            throw new BreedFetcher.BreedNotFoundException("Breed not found");
+        }
 
-        Request request = new Request.Builder().url(url).header("Accept", "application/json").build();
+        String encoded = java.net.URLEncoder.encode(
+                normalized, java.nio.charset.StandardCharsets.UTF_8);
+
+        String url = "https://dog.ceo/api/breed/" + encoded + "/list";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Accept", "application/json")
+                .build();
 
         try (Response response = client.newCall(request).execute()) {
-            if (breed == null) {
-                throw new BreedNotFoundException("Breed not found");
+            if (!response.isSuccessful() || response.body() == null) {
+                throw new BreedFetcher.BreedNotFoundException(breed);
             }
 
-            String normalized = breed.trim().toLowerCase(Locale.ROOT);
-            if (normalized.isEmpty()) {
-                throw new BreedNotFoundException("Breed not found");
+            String body = response.body().string();
+            JSONObject json = new JSONObject(body);
+
+            if (!"success".equalsIgnoreCase(json.optString("status"))) {
+                throw new BreedFetcher.BreedNotFoundException(breed);
             }
 
-            String encoded = java.net.URLEncoder.encode(
-                    normalized, java.nio.charset.StandardCharsets.UTF_8);
+            JSONArray arr = json.optJSONArray("message");
+            if (arr == null) {
+                throw new BreedFetcher.BreedNotFoundException(breed);
+            }
 
-            String url = "https://dog.ceo/api/breed/" + encoded + "/list";
-
-            Request request = new Request.Builder()
-                    .url(url)
-                    .header("Accept", "application/json")
-                    .build();
-
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful() || response.body() == null) {
-                    throw new BreedNotFoundException(breed);
-                }
-
-                String body = response.body().string();
-                JSONObject json = new JSONObject(body);
-
-                if (!"success".equalsIgnoreCase(json.optString("status"))) {
-                    throw new BreedNotFoundException(breed);
-                }
-
-                JSONArray arr = json.optJSONArray("message");
-                if (arr == null) {
-                    throw new BreedNotFoundException(breed);
-                }
-
-                List<String> subBreeds = new ArrayList<>(arr.length());
-                for (int i = 0; i < arr.length(); i++) {
-                    subBreeds.add(arr.getString(i));
-                }
-                return subBreeds;
+            List<String> subBreeds = new ArrayList<>(arr.length());
+            for (int i = 0; i < arr.length(); i++) {
+                subBreeds.add(arr.getString(i));
+            }
+            return subBreeds;
         } catch (IOException e) {
-            throw new BreedNotFoundException(breed);
+            throw new BreedFetcher.BreedNotFoundException(breed);
         }
 
     }
