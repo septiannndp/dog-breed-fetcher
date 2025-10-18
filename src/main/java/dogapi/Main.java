@@ -27,7 +27,7 @@ public class Main {
         try {
             List<String> subBreeds = breedFetcher.getSubBreeds(breed);
             return subBreeds.size();
-        } catch (BreedNotFoundException e) {
+        } catch (BreedFetcher.BreedNotFoundException e) {
             return 0;
         }
     }
