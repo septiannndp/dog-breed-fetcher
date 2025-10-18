@@ -29,15 +29,7 @@ public class DogApiBreedFetcher implements BreedFetcher {
             throw new BreedFetcher.BreedNotFoundException("Breed not found");
         }
 
-        String normalized = breed.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            throw new BreedFetcher.BreedNotFoundException("Breed not found");
-        }
-
-        String encoded = java.net.URLEncoder.encode(
-                normalized, java.nio.charset.StandardCharsets.UTF_8);
-
-        String url = "https://dog.ceo/api/breed/" + encoded + "/list";
+        String url = "https://dog.ceo/api/breed/" + breed + "/list";
 
         Request request = new Request.Builder()
                 .url(url)
@@ -49,22 +41,21 @@ public class DogApiBreedFetcher implements BreedFetcher {
                 throw new BreedFetcher.BreedNotFoundException(breed);
             }
 
-            String body = response.body().string();
-            JSONObject json = new JSONObject(body);
+            String responseBody = response.body().string();
+            JSONObject json = new JSONObject(responseBody);
 
+            // Check for "success" status
             if (!"success".equalsIgnoreCase(json.optString("status"))) {
                 throw new BreedFetcher.BreedNotFoundException(breed);
             }
 
-            JSONArray arr = json.optJSONArray("message");
-            if (arr == null) {
-                throw new BreedFetcher.BreedNotFoundException(breed);
+            JSONArray subBreedsArray = json.getJSONArray("message");
+            List<String> subBreeds = new ArrayList<>();
+
+            for (int i = 0; i < subBreedsArray.length(); i++) {
+                subBreeds.add(subBreedsArray.getString(i));
             }
 
-            List<String> subBreeds = new ArrayList<>(arr.length());
-            for (int i = 0; i < arr.length(); i++) {
-                subBreeds.add(arr.getString(i));
-            }
             return subBreeds;
         } catch (IOException e) {
             throw new BreedFetcher.BreedNotFoundException(breed);
